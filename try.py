@@ -1,28 +1,71 @@
 import requests
 import re
 from bs4 import BeautifulSoup
+import time
 
 course_count = 0
 study_num = 0
 
-def getCourse(url):
-    res = requests.get(url)#get请求，将结果保存到res中
-    soup = BeautifulSoup(res.text, 'lxml')#将结果中的html页面，让BeautifulSoup利用lxml解析，保存到soup中
-    course = soup.find_all('div',{'class':'col-md-4','class':'col-sm-6','class':'course'})#查找class为col-md-4 col-sm-6
-    for i in course:#循环从列表中，拿到每个课程的HTML代码
-        global course_count
-        global study_num
-        course_count = course_count + 1
-        title = i.find('div',{'class':'course-name'}).get_text()#获取课程标题
-        study_people = i.find('span',{'class':'course-per-num','class':'pull-left'}).get_text()#获取课程的学习人数
-        study_people = re.sub("\D", "", study_people)# 数字这里有太多的空格和回车，清理一
-        study_num = study_num + int(study_people)
-        try:
-            tag = i.find('span',{'class':'course-per-num','class':'pull-right'}).get_text()#查找课程类型，如果没有这行报错
-        except:
-            tag="课程"#上面报错，说明没有课程类型，只有普通课程没有，所以赋值课程
-        print("{}    学习人数:{}    {}\n".format(tag, study_people,title,))#打印课程类型、学习人数、课程名i
+host_url = "http://www.shiyanlou.com{}"
 
+def write_file(string):
+    log = open("data.log",'a')
+    log.write(string + '/n')
+    log.close()
+
+
+def parse_content(url,title,tag,study_num):
+    print(url,'&'*10)
+    res = requests.get(url)
+    soup = BeautifulSoup(res.text,'lxml')
+    type_list = soup.select('ol[class=breadcrumb] > li > a')
+    # check ol -> li -> a tag. Get the info
+    types = []
+    for i in type_list:
+        if (type_list.index(i) != 0) and (type_list.index(i) != len(type_list) - 1):
+            types.append(i.get_text())
+    info = soup.find('div',{'class':'course-infobox-content'})
+
+    try:
+        info = info.find('p').get_text()
+    except:
+        info = "Nothing"
+
+    teacher = soup.find('div',{'class':'name'})
+    try:
+        teacher = teacher.find('strong').get_text()
+    except:
+        teacher = "unknown"
+
+    labs = soup.find('div',{'id':'labs'})
+    test_list = labs.find_all('div',{'class':'lab-item'})
+    tests_name = []
+    for i in test_list:
+        name = i.find('div',{'class':'lab-item-title'}).get_text()
+        tests_name.append(name)
+    write_file("Class: {} Teacher: {} Tag: {} NumStudied: {} Type: {}".format(title,teacher,tag,study_num,'&'.join(types)))
+    write_file("Intro: {}".format(info))
+    for i in tests_name:
+        write_file(i)
+    write_file('*'*100)
+
+
+def get_course_link(url):
+    print(url)
+    res = requests.get(url)
+    soup = BeautifulSoup(res.text, 'lxml')
+    course = soup.find_all('div', {'class': 'col-md-4', 'class': 'col-sm-6', 'class': 'course'})
+    for i in course:
+        href = i.find('a',{'class':'course-box'}).get('href')#获取课程的链接，进入课程详情页面
+        title = i.find('div', {'class': 'course-name'}).get_text()#获取课程名
+        study_people = i.find('span', {'class': 'course-per-num', 'class':'pull-left'}).get_text()#获取学习人数
+        study_people = re.sub("\D", "", study_people)  #数字这里有太多的空格和回车，清理一下
+        try:#查询课程类型，普通课程则没有，用try
+            tag = i.find('span', {'class': 'course-per-num','class': 'pull-right'}).get_text()
+        except:
+            tag = "课程"
+        parse_content(url=host_url.format(href),title=title,tag=tag,study_num=study_people)#将数据丢到下一个函数
+        time.sleep(0.5)#睡眠0.5秒，防止太快
 
 def main():
     res = requests.get('https://www.shiyanlou.com/courses/')#发起get将结果保存到res中
@@ -43,7 +86,7 @@ def main():
             page_num = li_num
         # print(page_num,type(page_num))
     for i in range(1,page_num+1):#拿到page_num数字，从1开始数到page_num
-        getCourse(course_link.format(i))
+        get_course_link(course_link.format(i))
 
 if __name__ == "__main__":
     main();
