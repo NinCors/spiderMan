@@ -1,3 +1,4 @@
+from try_sql import insertData
 import requests
 import re
 from bs4 import BeautifulSoup
@@ -48,6 +49,8 @@ def parse_content(url,title,tag,study_num):
     for i in tests_name:
         write_file(i)
     write_file('*'*100)
+    # insert it into database
+    print(url,insertData(url, title, teacher, study_num, tag, '-'.join(types), info, '-'.join(tests_name)))
 
 
 def get_course_link(url):
