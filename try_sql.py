@@ -38,19 +38,20 @@ def insertData(url, title, teacher, study_num, tag, types, info, tests_name):
         try:
             sql3_db.execute(update_sql)
             sql3_db.commit()
-        except:
-            print("something is wrong when updating the data")
+        except sqlite3.Error as er:
+            print ('er:', er.message)
             return False
         sql3_db.close()
         return True
     else:
+        sql3_db = sqlite3.connect(base_url) 
         # if the item is not exit, then insert a new one
         insert_sql = "insert into {} (url, title, teacher, study_num, tag, types, info, tests_name) values('{}', '{}', '{}', {}, '{}', '{}', '{}', '{}')".format(table_name,url, title, teacher, study_num, tag, types, info,tests_name)
         try:
             sql3_db.execute(insert_sql)
             sql3_db.commit()
-        except:
-            print("Something is wrong when inserting the data")
+        except sqlite3.Error as er:
+            print ('er:', er.message)
             return False
         sql3_db.close()
         return True
